@@ -53,3 +53,5 @@ ipykernel
 # Editable Project Install
 # -----------------------------
 # -e .
+flask
+flask-cors

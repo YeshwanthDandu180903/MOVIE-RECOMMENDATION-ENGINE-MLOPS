@@ -9,6 +9,7 @@ from src.exception import MyException
 from botocore.exceptions import ClientError
 from pandas import DataFrame,read_csv
 import pickle
+from src.constants import REGION_NAME
 
 
 class SimpleStorageService:
@@ -89,6 +90,47 @@ class SimpleStorageService:
         except Exception as e:
             raise MyException(e, sys) from e
 
+    def ensure_bucket_exists(self, bucket_name: str, region_name: str = REGION_NAME) -> None:
+        """
+        Ensure the bucket exists; create it if missing.
+        """
+        try:
+            try:
+                self.s3_client.head_bucket(Bucket=bucket_name)
+                return
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "")
+                # If the bucket exists but is owned by someone else, surface the error.
+                if error_code not in ["404", "NoSuchBucket"]:
+                    raise
+
+            logging.info(f"Bucket {bucket_name} not found. Creating it.")
+
+            if region_name and region_name != "us-east-1":
+                try:
+                    self.s3_client.create_bucket(
+                        Bucket=bucket_name,
+                        CreateBucketConfiguration={"LocationConstraint": region_name}
+                    )
+                except ClientError as e:
+                    code = e.response.get("Error", {}).get("Code", "")
+                    if code in ["BucketAlreadyOwnedByYou", "BucketAlreadyExists"]:
+                        logging.info(f"Bucket {bucket_name} already present; continuing without create.")
+                    else:
+                        raise
+            else:
+                try:
+                    self.s3_client.create_bucket(Bucket=bucket_name)
+                except ClientError as e:
+                    code = e.response.get("Error", {}).get("Code", "")
+                    if code in ["BucketAlreadyOwnedByYou", "BucketAlreadyExists"]:
+                        logging.info(f"Bucket {bucket_name} already present; continuing without create.")
+                    else:
+                        raise
+
+        except Exception as e:
+            raise MyException(e, sys) from e
+
     def get_file_object(self, filename: str, bucket_name: str) -> Union[List[object], object]:
         """
         Retrieves the file object(s) from the specified bucket based on the filename.
@@ -164,6 +206,9 @@ class SimpleStorageService:
         """
         logging.info("Entered the upload_file method of SimpleStorageService class")
         try:
+            # Ensure bucket exists before attempting upload
+            self.ensure_bucket_exists(bucket_name)
+
             logging.info(f"Uploading {from_filename} to {to_filename} in {bucket_name}")
             self.s3_resource.meta.client.upload_file(from_filename, bucket_name, to_filename)
             logging.info(f"Uploaded {from_filename} to {to_filename} in {bucket_name}")

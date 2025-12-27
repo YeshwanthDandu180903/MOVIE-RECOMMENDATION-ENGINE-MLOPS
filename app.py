@@ -13,6 +13,57 @@ from flask_cors import CORS
 from src.exception import MyException
 from src.logger import logging
 from src.entity.estimator import MovieRecommenderEstimator
+from src.cloud_storage.aws_storage import SimpleStorageService
+from src.constants import (
+    MODEL_BUCKET_NAME,
+    MODEL_PUSHER_S3_KEY,
+    TFIDF_VECTORIZER_FILE_NAME,
+    TFIDF_MATRIX_FILE_NAME,
+    COSINE_SIMILARITY_FILE_NAME,
+    TFIDF_VECTORIZER_PATH,
+    TFIDF_MATRIX_PATH,
+    COSINE_SIMILARITY_PATH,
+)
+
+
+# =====================================================
+# OPTIONAL: DOWNLOAD ARTIFACTS FROM S3 AT STARTUP
+# =====================================================
+def ensure_model_artifacts_from_s3(force_download: bool = True):
+    """
+    Always fetch artifacts from S3 when force_download is True
+    to guarantee we serve the S3 version (no local fallback).
+    """
+    try:
+        s3 = SimpleStorageService()
+        downloads = [
+            (TFIDF_VECTORIZER_FILE_NAME, TFIDF_VECTORIZER_PATH),
+            (TFIDF_MATRIX_FILE_NAME, TFIDF_MATRIX_PATH),
+            (COSINE_SIMILARITY_FILE_NAME, COSINE_SIMILARITY_PATH),
+        ]
+
+        for fname, local_path in downloads:
+            local_path = str(local_path)
+
+            if not force_download and os.path.exists(local_path):
+                logging.info(f"Model artifact present locally, skipping download: {local_path}")
+                continue
+
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            s3_key = f"{MODEL_PUSHER_S3_KEY}/{fname}"
+            logging.info(
+                f"Downloading {s3_key} from s3://{MODEL_BUCKET_NAME} to {local_path}"
+            )
+            s3.s3_resource.meta.client.download_file(
+                MODEL_BUCKET_NAME,
+                s3_key,
+                local_path,
+            )
+
+        logging.info("Model artifacts ready from S3")
+    except Exception as e:
+        # Fail fast so we know startup cannot proceed without artifacts
+        raise MyException(e, sys)
 
 
 # =====================================================
@@ -22,6 +73,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
 try:
+    ensure_model_artifacts_from_s3(force_download=True)
     logging.info("Initializing MovieRecommenderEstimator")
     estimator = MovieRecommenderEstimator()
 except Exception as e:

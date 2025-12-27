@@ -94,7 +94,7 @@ AWS_ACCESS_KEY_ID_ENV_KEY = "AWS_ACCESS_KEY_ID"
 AWS_SECRET_ACCESS_KEY_ENV_KEY = "AWS_SECRET_ACCESS_KEY"
 REGION_NAME = "us-east-1"
 
-MODEL_BUCKET_NAME = "movie-recommender-models"
+MODEL_BUCKET_NAME = "movie-recommender-mlops"
 MODEL_PUSHER_S3_KEY = "model-registry/movie-recommender"
 
 # ============================================================

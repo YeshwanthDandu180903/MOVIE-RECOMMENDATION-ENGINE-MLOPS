@@ -1,5 +1,6 @@
 # filepath: C:\Users\abhis\yeshwanth\MOVIE-RECOMMENDATION-ENGINE-MLOPS\src\logger\__init__.py
 import os
+import sys
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
@@ -37,13 +38,28 @@ try:  # Add this line
         # Define formatter
         formatter = logging.Formatter("[ %(asctime)s ] %(name)s - %(levelname)s - %(message)s")
 
-        # File handler with rotation
-        file_handler = RotatingFileHandler(log_file_path, maxBytes=MAX_LOG_SIZE, backupCount=BACKUP_COUNT)
+        # File handler with rotation (UTF-8 to avoid encode errors)
+        file_handler = RotatingFileHandler(
+            log_file_path,
+            maxBytes=MAX_LOG_SIZE,
+            backupCount=BACKUP_COUNT,
+            encoding="utf-8",
+        )
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)
 
-        # Console handler
-        console_handler = logging.StreamHandler()
+        # Console handler with UTF-8-safe stream (Windows CP1252 can choke on Unicode)
+        stream = sys.stdout
+        try:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8")
+            else:
+                stream = open(stream.fileno(), mode="w", encoding="utf-8", closefd=False)
+        except Exception:
+            # Fallback to default stream if reconfigure fails
+            stream = sys.stdout
+
+        console_handler = logging.StreamHandler(stream)
         console_handler.setFormatter(formatter)
         console_handler.setLevel(logging.INFO)
 

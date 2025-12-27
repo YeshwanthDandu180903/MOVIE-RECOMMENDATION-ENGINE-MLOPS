@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from src.exception import MyException
 from src.logger import logging
@@ -30,9 +31,9 @@ class RecommenderEvaluation:
                 ]
 
                 title = self.df.iloc[idx]["title"]
-                preds = self.recommend_fn(title, top_n=k)
+                matched_title, preds = self.recommend_fn(title, top_n=k)
 
-                if preds is None:
+                if preds is None or preds.empty:
                     continue
 
                 pred_indices = [
@@ -61,7 +62,7 @@ class RecommenderEvaluation:
             return precision, recall, f1
 
         except Exception as e:
-            raise MyException(e)
+            raise MyException(e, sys)
 
     def genre_precision_at_k(self, k=10):
         try:
@@ -72,7 +73,7 @@ class RecommenderEvaluation:
                 title = self.df.iloc[idx]["title"]
                 base_genres = set(self.df.iloc[idx]["genres"].split())
 
-                preds = self.recommend_fn(title, top_n=k)
+                _, preds = self.recommend_fn(title, top_n=k)
                 if preds is None:
                     continue
 
@@ -88,4 +89,4 @@ class RecommenderEvaluation:
             return precision
 
         except Exception as e:
-            raise MyException(e)
+            raise MyException(e, sys)

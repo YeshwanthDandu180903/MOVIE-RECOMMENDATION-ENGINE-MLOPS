@@ -8,21 +8,25 @@ from src.components.data_validation import DataValidation
 from src.components.data_transformation import DataTransformation
 from src.components.recommender_trainer import RecommenderTrainer
 from src.components.recommender_evaluation import RecommenderEvaluation
+from src.components.model_pusher import ModelPusher
 from src.pipeline.prediction_pipeline import MovieRecommender
 # Configs
 from src.entity.config_entity import (
     DataIngestionConfig,
     DataValidationConfig,
     DataTransformationConfig,
-    RecommenderModelConfig
+    RecommenderModelConfig,
+    ModelPusherConfig
 )
+from src.constants import MODEL_BUCKET_NAME, MODEL_PUSHER_S3_KEY
 
 # Artifacts
 from src.entity.artifact_entity import (
     DataIngestionArtifact,
     DataValidationArtifact,
     DataTransformationArtifact,
-    RecommenderModelArtifact
+    RecommenderModelArtifact,
+    RecommenderModelPusherArtifact
 )
 
 
@@ -35,6 +39,11 @@ class TrainingPipeline:
             self.data_validation_config = DataValidationConfig()
             self.data_transformation_config = DataTransformationConfig()
             self.recommender_model_config = RecommenderModelConfig()
+            self.model_pusher_config = ModelPusherConfig(
+                bucket_name=MODEL_BUCKET_NAME,
+                s3_model_dir=MODEL_PUSHER_S3_KEY,
+                local_artifact_dir=self.recommender_model_config.model_dir
+            )
 
         except Exception as e:
             raise MyException(e, sys)
@@ -151,6 +160,29 @@ class TrainingPipeline:
             raise MyException(e, sys)
 
     # =========================================================
+    # Model Pusher
+    # =========================================================
+    def start_model_pusher(self) -> RecommenderModelPusherArtifact:
+        try:
+            logging.info("Starting Model Pusher stage")
+
+            model_pusher = ModelPusher(
+                model_pusher_config=self.model_pusher_config
+            )
+
+            model_pusher_artifact = model_pusher.initiate_model_pusher()
+
+            logging.info(
+                f"Model uploaded to s3://{model_pusher_artifact.bucket_name}/"
+                f"{model_pusher_artifact.s3_model_path}"
+            )
+
+            return model_pusher_artifact
+
+        except Exception as e:
+            raise MyException(e, sys)
+
+    # =========================================================
     # Run Entire Pipeline
     # =========================================================
     def run_pipeline(self) -> None:
@@ -178,18 +210,22 @@ class TrainingPipeline:
                 df=recommender.df,
                 cosine_sim=recommender.cosine_sim,
                 recommend_fn=recommender.recommend
-)
-            
+            )
+
             precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
             genre_precision = evaluator.genre_precision_at_k(k=10)
+
+            # Upload trained artifacts to S3
+            self.start_model_pusher()
+
             logging.info("===== Movie Recommendation Training Pipeline COMPLETED =====")
             logging.info(
-    f"Final Evaluation → "
-    f"Precision@10={precision:.4f}, "
-    f"Recall@10={recall:.4f}, "
-    f"F1@10={f1:.4f}, "
-    f"GenrePrecision@10={genre_precision:.4f}"
-)
+                f"Final Evaluation -> "
+                f"Precision@10={precision:.4f}, "
+                f"Recall@10={recall:.4f}, "
+                f"F1@10={f1:.4f}, "
+                f"GenrePrecision@10={genre_precision:.4f}"
+            )
 
         except Exception as e:
             raise MyException(e, sys)

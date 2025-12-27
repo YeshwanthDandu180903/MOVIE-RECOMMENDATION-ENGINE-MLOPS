@@ -20,7 +20,7 @@ class ModelPusher:
         except Exception as e:
             raise MyException(e, sys)
 
-    def initiate_model_pusher(self) -> ModelPusherArtifact:
+    def initiate_model_pusher(self) -> RecommenderModelPusherArtifact:
         """
         Upload recommender artifacts to S3
         """
@@ -37,9 +37,9 @@ class ModelPusher:
                     s3_path = os.path.join(
                         s3_dir,
                         os.path.relpath(local_path, local_artifact_dir)
-                    )
+                    ).replace("\\", "/")
 
-                    logging.info(f"Uploading {local_path} → s3://{bucket_name}/{s3_path}")
+                    logging.info(f"Uploading {local_path} -> s3://{bucket_name}/{s3_path}")
 
                     self.s3.upload_file(
                         from_filename=local_path,
@@ -48,7 +48,7 @@ class ModelPusher:
                         remove=False
                     )
 
-            model_pusher_artifact = ModelPusherArtifact(
+            model_pusher_artifact = RecommenderModelPusherArtifact(
                 bucket_name=bucket_name,
                 s3_model_path=s3_dir
             )
