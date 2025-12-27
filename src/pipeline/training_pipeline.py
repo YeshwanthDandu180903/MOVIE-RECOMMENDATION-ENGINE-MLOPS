@@ -1,34 +1,40 @@
 import sys
-from src.exception import MyException
 from src.logger import logging
+from src.exception import MyException
 
+# Components
 from src.components.data_ingestion import DataIngestion
-# from src.components.data_validation import DataValidation
-# from src.components.data_transformation import DataTransformation
-# from src.components.recommender_trainer import RecommenderTrainer
+from src.components.data_validation import DataValidation
+from src.components.data_transformation import DataTransformation
+from src.components.recommender_trainer import RecommenderTrainer
 
+# Configs
 from src.entity.config_entity import (
     DataIngestionConfig,
-    # DataValidationConfig,
-    # DataTransformationConfig,
-    # RecommenderModelConfig
+    DataValidationConfig,
+    DataTransformationConfig,
+    RecommenderModelConfig
 )
 
+# Artifacts
 from src.entity.artifact_entity import (
     DataIngestionArtifact,
-    # DataValidationArtifact,
-    # DataTransformationArtifact,
-    # RecommenderModelArtifact
+    DataValidationArtifact,
+    DataTransformationArtifact,
+    RecommenderModelArtifact
 )
 
 
 class TrainingPipeline:
     def __init__(self):
         try:
+            logging.info("Initializing Movie Recommendation Training Pipeline")
+
             self.data_ingestion_config = DataIngestionConfig()
-            # self.data_validation_config = DataValidationConfig()
-            # self.data_transformation_config = DataTransformationConfig()
-            # self.recommender_model_config = RecommenderModelConfig()
+            self.data_validation_config = DataValidationConfig()
+            self.data_transformation_config = DataTransformationConfig()
+            self.recommender_model_config = RecommenderModelConfig()
+
         except Exception as e:
             raise MyException(e, sys)
 
@@ -45,7 +51,7 @@ class TrainingPipeline:
             data_ingestion_artifact = data_ingestion.initiate_data_ingestion()
 
             logging.info(
-                f"Data Ingestion completed. File stored at: "
+                f"Data Ingestion completed. Data stored at: "
                 f"{data_ingestion_artifact.ingested_data_file_path}"
             )
 
@@ -55,27 +61,117 @@ class TrainingPipeline:
             raise MyException(e, sys)
 
     # =========================================================
-    # Pipeline Runner
+    # Data Validation
+    # =========================================================
+    def start_data_validation(
+        self,
+        data_ingestion_artifact: DataIngestionArtifact
+    ) -> DataValidationArtifact:
+        try:
+            logging.info("Starting Data Validation stage")
+
+            data_validation = DataValidation(
+                data_ingestion_artifact=data_ingestion_artifact,
+                data_validation_config=self.data_validation_config
+            )
+
+            data_validation_artifact = data_validation.initiate_data_validation()
+
+            if not data_validation_artifact.validation_status:
+                raise Exception("Data validation failed")
+
+            logging.info("Data Validation completed successfully")
+
+            return data_validation_artifact
+
+        except Exception as e:
+            raise MyException(e, sys)
+
+    # =========================================================
+    # Data Transformation
+    # =========================================================
+    def start_data_transformation(
+        self,
+        data_ingestion_artifact: DataIngestionArtifact,
+        data_validation_artifact: DataValidationArtifact
+    ) -> DataTransformationArtifact:
+        try:
+            logging.info("Starting Data Transformation stage")
+
+            data_transformation = DataTransformation(
+                data_ingestion_artifact=data_ingestion_artifact,
+                data_validation_artifact=data_validation_artifact,
+                data_transformation_config=self.data_transformation_config
+            )
+
+            data_transformation_artifact = (
+                data_transformation.initiate_data_transformation()
+            )
+
+            logging.info(
+                f"Data Transformation completed. Transformed data at: "
+                f"{data_transformation_artifact.transformed_data_file_path}"
+            )
+
+            return data_transformation_artifact
+
+        except Exception as e:
+            raise MyException(e, sys)
+
+    # =========================================================
+    # Recommender Trainer
+    # =========================================================
+    def start_recommender_trainer(
+        self,
+        data_transformation_artifact: DataTransformationArtifact
+    ) -> RecommenderModelArtifact:
+        try:
+            logging.info("Starting Recommender Trainer stage")
+
+            recommender_trainer = RecommenderTrainer(
+                data_transformation_artifact=data_transformation_artifact,
+                recommender_model_config=self.recommender_model_config
+            )
+
+            recommender_model_artifact = (
+                recommender_trainer.initiate_recommender_trainer()
+            )
+
+            logging.info(
+                "Recommender Trainer completed. Artifacts saved at:"
+                f"\nTF-IDF: {recommender_model_artifact.tfidf_vectorizer_path}"
+                f"\nMatrix: {recommender_model_artifact.tfidf_matrix_path}"
+                f"\nCosine: {recommender_model_artifact.cosine_similarity_path}"
+            )
+
+            return recommender_model_artifact
+
+        except Exception as e:
+            raise MyException(e, sys)
+
+    # =========================================================
+    # Run Entire Pipeline
     # =========================================================
     def run_pipeline(self) -> None:
         try:
-            logging.info("===== Movie Recommendation Training Pipeline Started =====")
+            logging.info("===== Movie Recommendation Training Pipeline STARTED =====")
 
             data_ingestion_artifact = self.start_data_ingestion()
 
-            # data_validation_artifact = self.start_data_validation(
-            #     data_ingestion_artifact
-            # )
+            data_validation_artifact = self.start_data_validation(
+                data_ingestion_artifact
+            )
 
-            # data_transformation_artifact = self.start_data_transformation(
-            #     data_ingestion_artifact, data_validation_artifact
-            # )
+            data_transformation_artifact = self.start_data_transformation(
+                data_ingestion_artifact,
+                data_validation_artifact
+            )
 
-            # recommender_model_artifact = self.start_recommender_trainer(
-            #     data_transformation_artifact
-            # )
+            self.start_recommender_trainer(
+                data_transformation_artifact
+            )
 
-            logging.info("===== Movie Recommendation Training Pipeline Completed =====")
+            logging.info("===== Movie Recommendation Training Pipeline COMPLETED =====")
 
         except Exception as e:
             raise MyException(e, sys)

@@ -1,0 +1,16 @@
+columns:
+  - title
+  - overview
+  - genres
+  - keywords
+  - cast
+  - director
+  - rating
+  - poster_url
+
+required_text_columns:
+  - overview
+  - genres
+  - keywords
+  - cast
+  - director

@@ -14,7 +14,15 @@
 
 # # print("cwd:", os.getcwd())
 
-from src.pipeline.training_pipeline import TrainingPipeline
+# from src.pipeline.training_pipeline import TrainingPipeline
 
-pipeline = TrainingPipeline()
-pipeline.run_pipeline()
+# pipeline = TrainingPipeline()
+# pipeline.run_pipeline()
+
+
+from src.pipeline.prediction_pipeline import MovieRecommender
+
+recommender = MovieRecommender()
+
+results = recommender.recommend("batman", top_n=10)
+print(results)
