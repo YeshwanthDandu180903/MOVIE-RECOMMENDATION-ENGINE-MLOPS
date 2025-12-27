@@ -66,3 +66,10 @@ class RecommenderModelConfig:
     tfidf_vectorizer_path: str = os.path.join(model_dir, "tfidf_vectorizer.pkl")
     tfidf_matrix_path: str = os.path.join(model_dir, "tfidf_matrix.npz")
     cosine_similarity_path: str = os.path.join(model_dir, "cosine_similarity.npy")
+    
+@dataclass
+class ModelPusherConfig:
+    bucket_name: str
+    s3_model_dir: str
+    local_artifact_dir: str
+    

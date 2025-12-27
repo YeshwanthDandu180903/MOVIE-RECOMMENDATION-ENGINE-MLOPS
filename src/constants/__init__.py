@@ -92,7 +92,7 @@ TOP_K_RECOMMENDATIONS = 10
 
 AWS_ACCESS_KEY_ID_ENV_KEY = "AWS_ACCESS_KEY_ID"
 AWS_SECRET_ACCESS_KEY_ENV_KEY = "AWS_SECRET_ACCESS_KEY"
-AWS_REGION_NAME = "us-east-1"
+REGION_NAME = "us-east-1"
 
 MODEL_BUCKET_NAME = "movie-recommender-models"
 MODEL_PUSHER_S3_KEY = "model-registry/movie-recommender"
