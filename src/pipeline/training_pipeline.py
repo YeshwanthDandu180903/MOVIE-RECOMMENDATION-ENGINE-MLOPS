@@ -7,7 +7,8 @@ from src.components.data_ingestion import DataIngestion
 from src.components.data_validation import DataValidation
 from src.components.data_transformation import DataTransformation
 from src.components.recommender_trainer import RecommenderTrainer
-
+from src.components.recommender_evaluation import RecommenderEvaluation
+from src.pipeline.prediction_pipeline import MovieRecommender
 # Configs
 from src.entity.config_entity import (
     DataIngestionConfig,
@@ -167,11 +168,28 @@ class TrainingPipeline:
                 data_validation_artifact
             )
 
-            self.start_recommender_trainer(
+            recommender_trainer_artifact = self.start_recommender_trainer(
                 data_transformation_artifact
             )
+            # Load recommender for evaluation
+            recommender = MovieRecommender()
 
+            evaluator = RecommenderEvaluation(
+                df=recommender.df,
+                cosine_sim=recommender.cosine_sim,
+                recommend_fn=recommender.recommend
+)
+            
+            precision, recall, f1 = evaluator.precision_recall_f1_at_k(k=10)
+            genre_precision = evaluator.genre_precision_at_k(k=10)
             logging.info("===== Movie Recommendation Training Pipeline COMPLETED =====")
+            logging.info(
+    f"Final Evaluation → "
+    f"Precision@10={precision:.4f}, "
+    f"Recall@10={recall:.4f}, "
+    f"F1@10={f1:.4f}, "
+    f"GenrePrecision@10={genre_precision:.4f}"
+)
 
         except Exception as e:
             raise MyException(e, sys)

@@ -22,7 +22,11 @@
 
 from src.pipeline.prediction_pipeline import MovieRecommender
 
+
 recommender = MovieRecommender()
 
-results = recommender.recommend("batman", top_n=10)
-print(results)
+matched_movie, recs = recommender.recommend(" bahubali", top_n=10)
+
+print(f"\n🎬 Matched Movie: {matched_movie}\n")
+print("📌 Recommendations:")
+print(recs)
